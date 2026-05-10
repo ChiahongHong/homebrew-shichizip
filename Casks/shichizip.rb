@@ -10,12 +10,12 @@ cask "shichizip" do
   desc "7-Zip derivative intended for macOS"
   homepage "https://github.com/idawnlight/ShichiZip"
 
-  depends_on macos: ">= :ventura"
-
   livecheck do
     url :url
     strategy :github_latest
   end
+
+  depends_on macos: ">= :ventura"
 
   app "ShichiZip.app"
 
