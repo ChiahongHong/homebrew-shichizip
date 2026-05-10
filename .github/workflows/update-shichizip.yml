@@ -1,0 +1,110 @@
+name: Update ShichiZip Cask
+
+on:
+  schedule:
+    - cron: "30 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: macos-latest
+    env:
+      HOMEBREW_GITHUB_API_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Check out tap
+        uses: actions/checkout@v4
+
+      - name: Fetch latest ShichiZip release metadata
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          release_json="$(gh api repos/idawnlight/ShichiZip/releases/latest)"
+          tag="$(jq -r '.tag_name' <<<"$release_json")"
+          version="${tag#v}"
+
+          arm_asset="ShichiZip-v${version}-arm64.zip"
+          intel_asset="ShichiZip-v${version}-x86_64.zip"
+
+          arm_url="$(jq -r --arg name "$arm_asset" '.assets[] | select(.name == $name) | .browser_download_url' <<<"$release_json")"
+          intel_url="$(jq -r --arg name "$intel_asset" '.assets[] | select(.name == $name) | .browser_download_url' <<<"$release_json")"
+          arm_sha="$(jq -r --arg name "$arm_asset" '.assets[] | select(.name == $name) | .digest | sub("^sha256:"; "")' <<<"$release_json")"
+          intel_sha="$(jq -r --arg name "$intel_asset" '.assets[] | select(.name == $name) | .digest | sub("^sha256:"; "")' <<<"$release_json")"
+
+          if [[ -z "$arm_url" || -z "$intel_url" || -z "$arm_sha" || -z "$intel_sha" ]]; then
+            echo "Missing expected ShichiZip release assets for ${tag}" >&2
+            exit 1
+          fi
+
+          {
+            echo "tag=${tag}"
+            echo "version=${version}"
+            echo "arm_sha=${arm_sha}"
+            echo "intel_sha=${intel_sha}"
+          } >>"$GITHUB_OUTPUT"
+
+      - name: Update cask
+        id: update
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          ARM_SHA: ${{ steps.release.outputs.arm_sha }}
+          INTEL_SHA: ${{ steps.release.outputs.intel_sha }}
+        run: |
+          set -euo pipefail
+
+          ruby <<'RUBY'
+          path = "Casks/shichizip.rb"
+          version = ENV.fetch("VERSION")
+          arm_sha = ENV.fetch("ARM_SHA")
+          intel_sha = ENV.fetch("INTEL_SHA")
+
+          content = File.read(path)
+          content = content.sub(/version "[^"]+"/, %(version "#{version}"))
+          content = content.sub(/sha256 arm:\s+"[a-f0-9]{64}",\n\s+intel: "[a-f0-9]{64}"/, %(sha256 arm:   "#{arm_sha}",\n         intel: "#{intel_sha}"))
+          File.write(path, content)
+          RUBY
+
+          if git diff --quiet -- Casks/shichizip.rb; then
+            echo "changed=false" >>"$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >>"$GITHUB_OUTPUT"
+          fi
+
+      - name: Register updated tap
+        if: steps.update.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+
+          owner="${GITHUB_REPOSITORY%%/*}"
+          repo="${GITHUB_REPOSITORY#*/}"
+          tap_repo="${repo#homebrew-}"
+          tap="${owner}/${tap_repo}"
+
+          brew tap "$tap" "$GITHUB_WORKSPACE"
+          tap_path="$(brew --repository "$tap")"
+          cp Casks/shichizip.rb "$tap_path/Casks/shichizip.rb"
+
+      - name: Audit updated cask
+        if: steps.update.outputs.changed == 'true'
+        run: brew audit --cask --online shichizip
+
+      - name: Dry-run install updated cask
+        if: steps.update.outputs.changed == 'true'
+        run: brew install --cask --dry-run shichizip
+
+      - name: Commit update
+        if: steps.update.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/shichizip.rb
+          git commit -m "chore: update shichizip to v${{ steps.release.outputs.version }}"
+          git push
