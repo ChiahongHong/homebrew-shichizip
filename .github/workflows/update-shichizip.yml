@@ -3,6 +3,12 @@ name: Update ShichiZip Cask
 on:
   schedule:
     - cron: "30 0 * * *"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/update-shichizip.yml"
+      # Only trigger on changes to the workflow file itself to avoid infinite loops from commits to the casks
   workflow_dispatch:
 
 permissions:
@@ -16,7 +22,7 @@ jobs:
 
     steps:
       - name: Check out tap
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Fetch latest ShichiZip release metadata
         id: release
