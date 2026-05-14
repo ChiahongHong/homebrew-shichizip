@@ -19,6 +19,6 @@ The updater tracks the regular `ShichiZip` app release assets only:
 - `ShichiZip-v<version>-arm64.zip`
 - `ShichiZip-v<version>-x86_64.zip`
 
-It does not track prereleases, draft releases, or the `ShichiZipZS` variant.
+It does not track prereleases, draft releases, or the `ShichiZipZS` variant. **SO I AM FORKING TO ADD IT** later.
 
 You can also run the updater manually from the `Update ShichiZip Cask` workflow in GitHub Actions.
