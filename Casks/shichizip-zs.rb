@@ -2,8 +2,8 @@ cask "shichizip-zs" do
   arch arm: "arm64", intel: "x86_64"
 
   version "0.1.6"
-  sha256 arm:   "TODO_ARM64_SHA256",
-         intel: "TODO_X86_64_SHA256"
+  sha256 arm:   "d6b2380332e990971ae699fc528cb9d8bfd19b4aec1f7b750cc3a541d437377a",
+         intel: "1d5f802731f924fb4d905c2a81e39caec6ebdd2431bb80dd971fd3ef015fbb4f"
 
   url "https://github.com/idawnlight/ShichiZip/releases/download/v#{version}/ShichiZipZS-v#{version}-#{arch}.zip"
   name "ShichiZip ZS"
