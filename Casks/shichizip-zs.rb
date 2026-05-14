@@ -17,7 +17,7 @@ cask "shichizip-zs" do
 
   depends_on macos: ">= :ventura"
 
-  app "ShichiZipZS.app"
+  app "ShichiZip ZS.app"
 
   zap trash: [
     "~/Library/Application Scripts/ee.dawn.ShichiZipZS.OpenInShichiZipAction",
